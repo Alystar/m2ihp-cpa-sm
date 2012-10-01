@@ -1,0 +1,103 @@
+m2ihp-cpa-sm
+============
+
+
+SUJET :
+
+Remarques générales
+	A] Ce qui est pris en compte
+		1) La lisibilité du code
+		2) Ce qui a été fait (rien ne marche, une seule partie fonctionne, tout fonctionne comme demandé, vous avez refait gprof entièrement en mieux en poussant le sujet au maximum)
+		3) La gestion des cas tordus potentiels
+		4) La lisibilité du rapport et sa rédaction
+		5) La présentation de votre code, de sa démo (donc de son exécution), de ce que vous savez sur votre code (pouvez vous le modifier ou expliquer comment on pourrait l'étendre ?)
+		6) La réponse aux questions de cours
+
+	B] Si quelque chose n'est pas clair dans ce sujet, demandez. Comme tout projhet, la question n'est pas de voir que vous pouvez faire cela sans aide ou en trichant mais de vous menez à bon port. Si vous êtes bloqués, il suffit de poser une question et, dans la mesure du possible, nous vous aiderons à trouver une solution.
+
+	C] Nous vous fournirons des exemples de code que vous pouvez tester au fur et à mesure du projet.
+
+	D] Le sujet sera complété par une dernière partie la semaine prochaine
+
+But du projet
+	Le but de ce projet est la réalisation d'un outil ressemblant à l'outil gprof. Nous allons ajouter des pragmas dans le code pour sélectionner les fonctions à profiler. Ces pragmas ne seront utilisés que si une certaine option est passée au programme. Par exemple :
+
+	#pragma instrument foo
+	void foo (int a)
+	{
+		...
+	}
+
+	avec : '$ gcc test.c' ne fera rien, par contre
+	avec : '$ gcc -finstrument test.c' fera l'instrumentation de la fonction foo seulement.
+
+Partie I - Gestion des pragmas et de l'option
+	DONE!!
+
+Partie II - Génération statique d'un fichier de description des fonctions
+	Il s'agit pour chaque fonction ou fragment de code ciblés par un pragma de compter le nombre d'instruction de type LOAD ou STORE. A la fin de l'analyse ces informations sont stockées dans un fichier fixé en dur dans votre code (par exemple : instrumentation.txt)
+
+	Deux extensions optionnelles pour cette partie :
+		1) Avoir une option pour définir le fichier de sortie à la compilation
+		2) Il serait souhaitable de capturer dans le fichier résultats les bornes des boucles, ainsi on souhaite obtenir une équation statique décrivant le comportement mémoire de la fonction.
+
+	Exemple pour une fonction :
+	int toto (int *tab)
+	{
+		int sum = tab[0] + tab[1] + tab[2];
+		int i;
+
+		for (i = 0; i < N; i++)
+		{
+			sym += tab[i] + 3 * tab[i+1];
+			tab[i+1] = sum;
+		}
+
+		sum += tab[0] + tab[1];
+
+		for (i = 0; i < M; i++)
+		{
+			sum += tab[i] + 3 * tab[i+1] + 4 * tab[i-1];
+			tab[i+1] = sum;
+			tab[i+2] = sum * 2;
+			tab[i+3] = sum * 3;
+		}
+	}
+
+	On aurait en sortie :
+
+	fonction toto
+		3 LOAD
+		2 * N LOAD
+		1 * N STORE
+		2 LOAD
+		3 * M LOAD
+		3 * M STORE
+
+Partie III - Réalisation d'une passe GCC pour l'instrumentation dynamique de code
+	On aimerait instrumenter le code pour avoir les informations pendant l'exécution du programme. Ainsi, on utilisera une librairie dynamique qui sera chargée à l'exécution. Le compilateur ajoutera des appels vers cette bibliothèque lors de la compilation.
+
+	Une solution possible est d'avoir dans la bibliothèque runtime :
+	- Entrée et sortie d'une fonction
+	- Capture du nom et de l'identifiant d'une fonction
+	- Mise à jour des structures de données comptabilisant le temps d'exécution ou les évènements
+
+	Les résultats attendus de cette phase de 'profilage' est une trace d'exécution.
+	Appel 1 à la fonction toto entrée cycle WW sortie cycle XX
+	[...]
+	Appel 153 à la fonction tutu entrée cycle YY sortie cycle WW
+
+	Pour cela il va falloir utiliser une fonction temps comme rdtsc ou gettimeofday (recherche Google à souhait)
+
+Partie IV - Gestion des fichiers de sortie
+	Nous avons donc, grâce aux parties II et III deux fichiers de sortie. Le premier est généré pendant la compilation et donne des informations sur le code et le deuxième est généré pendant l'exécution. La question de cette quatrième partie est de voir si nous pouvons corréler les deux.
+
+	En utilisant les outils LEX et YACC, on écrira un parseur des fichiers de trace obtenu lors de la partie III pour :
+
+	A] Construire un profilage exclusif et non plus inclusif comme celui du fichier de trace.
+		1) Le temps inclusif d'une fonction est le temps de son code plus le temps d'exécution des fonctions qu'elle appelle
+		2) Le temps exclusif est le temps de la fonction seule, sans le temps des appels de fonction qu'elle contient
+	B] Générer une courbe gnuplot illustrant la variabilité des performances pour une même fonction, que cela soit en mode inclusif ou exclusif.
+	C] Agréger les temps d'exécution des différentes instances d'une même fonction
+
+	Enfin, ce parseur sera étendu pour également prendre en entrée le fichier d'annotation pour l'analyse statique et pour qu'il propose une corrélation entre le temps d'exécution et le nombre d'instructions de LOAD et de STORE ainsi que les bornes de boucle.

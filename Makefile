@@ -1,7 +1,7 @@
 CC=gcc
 
 CCFLAGS=-Wall -Wextra -O2 -I include/
-CCPLUGFLAGS=-O2 -I `gcc -print-file-name=plugin`/include -fPIC
+CCPLUGFLAGS=-O2 -I include/ -I `gcc -print-file-name=plugin`/include -fPIC
 CCTESTFLAGS=-fplugin=./$(EXEC) -Wall -Wextra -O2
 LDFLAGS=
 

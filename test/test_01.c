@@ -5,9 +5,13 @@
 #define M		55
 #define SIZE	60
 
-#pragma instrumente "lollol"
-#pragma instrumente toto
-#pragma instrumente (toto,main)
+#pragma instrumente toto2
+#pragma instrumente (toto, main)
+
+int toto2 ()
+{
+	return 0;
+}
 
 int toto (int *tab)
 {
