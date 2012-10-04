@@ -203,8 +203,6 @@ pragma_gate ()
 static unsigned
 pragma_exec ()
 {
-	tree message = 0;
-
 	// Search if the function has to be instrumented
 	if (search_and_delete_function_in_list (
 		&func_to_inst_list,

@@ -1,4 +1,4 @@
-//#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define N		25
@@ -8,9 +8,9 @@
 #pragma instrumente toto2
 #pragma instrumente (toto, main)
 
-int toto2 ()
+void toto2 ()
 {
-	return 0;
+	
 }
 
 int toto (int *tab)
@@ -45,16 +45,20 @@ int main (int argc, char **argv)
 	(void) argc;
 	(void) argv;
 
-	tab = malloc (SIZE * sizeof (int) );
+//	tab = malloc (SIZE * sizeof (int) );
 
-	for (i = 0; i < SIZE; ++i)
-	{
-		tab[i] = i + 1;
-	}
+//	for (i = 0; i < SIZE; ++i)
+//	{
+//		tab[i] = i + 1;
+//	}
+
+	toto2 ();
 
 //	printf ("The result is %d\n", toto (tab) );
 
-	free (tab);
+	printf ("Test\n");
+
+//	free (tab);
 
 	return 0;
 }

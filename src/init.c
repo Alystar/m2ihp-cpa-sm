@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "pass_runtime.h"
 #include "pragma.h"
 
 /*****************************************************************************/
@@ -24,6 +25,9 @@ plugin_register (
 
 	register_callback (plugin_info->base_name,
 		PLUGIN_PASS_MANAGER_SETUP, 0, &pragma_pass);
+
+//	register_callback (plugin_info->base_name,
+//		PLUGIN_PASS_MANAGER_SETUP, 0, &runtime_pass);
 }
 
 /**
