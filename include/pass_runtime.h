@@ -8,7 +8,6 @@
 #include <tree-pass.h>
 #include <tree.h>
 #include <function.h>
-#include <gimple.h>
 #include <input.h>
 #include <basic-block.h>
 

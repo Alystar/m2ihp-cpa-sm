@@ -189,7 +189,7 @@ static function_list_t * func_to_inst_list = NULL;
  * @TODO Implement a compiler option?
  */
 static bool
-pragma_gate ()
+pragma_gate ( )
 {
 	return true;
 }
@@ -201,7 +201,7 @@ pragma_gate ()
  * @TODO Implement it
  */
 static unsigned
-pragma_exec ()
+pragma_exec ( )
 {
 	// Search if the function has to be instrumented
 	if (search_and_delete_function_in_list (
