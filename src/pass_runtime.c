@@ -11,28 +11,21 @@
  * @TODO Implement it
  */
 static void
-runtime_start_program ()
+runtime_start_program ( )
 {
-	basic_block				bb = ENTRY_BLOCK_PTR->next_bb;
-	gimple_stmt_iterator	gsi = gsi_start_bb (bb);
-	tree					arg;
+	basic_block				bb 		= ENTRY_BLOCK_PTR->next_bb;
+	gimple_stmt_iterator	gsi 	= gsi_start_bb (bb);
+	tree					arg 	= build_string_literal (5, "Test");
+	tree					arg2	= build_string_literal (8, "lolilol");
+	tree					arg1	= build_string_literal (11, "Plop: %s\n");
 	gimple 					stmt;
-
-
-	arg = build_string_literal (5, "Test");
+	gimple 					stmt2;
 
 	stmt = gimple_build_call (built_in_decls[BUILT_IN_PUTS], 1, arg); // p.256
-
-	//gimple 					stmt = gimple_build_return (0);
-
-	//int i;
-
-	/*for (i = 0; i < END_BUILTINS; ++i)
-	{
-		printf ("Test %d: %s\n", i, built_in_names[BUILT_IN_PRINTF]);
-	}*/
+	stmt2 = gimple_build_call (built_in_decls[BUILT_IN_PRINTF], 2, arg1, arg2 );
 
 	gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
+	gsi_insert_before (&gsi, stmt2, GSI_SAME_STMT);
 
 	printf ("I'm in the main function\n");
 }
@@ -42,7 +35,7 @@ runtime_start_program ()
  * @TODO Implement it
  */
 static void
-runtime_end_program ()
+runtime_end_program ( )
 {
 
 }
@@ -52,9 +45,24 @@ runtime_end_program ()
  * @TODO Implement it
  */
 static void
-runtime_start_function ()
+runtime_start_function ( )
 {
+	basic_block				bb		= ENTRY_BLOCK_PTR->next_bb;
+	gimple_stmt_iterator	gsi		= gsi_start_bb (bb);
+	tree 					args	= build_function_type_list (
+		void_type_node, ptr_type_node, unsigned_type_node, NULL_TREE);
+	tree 					decl	= build_fn_decl (
+		"RUNTIME_start_function", args);
+	tree 					arg_nm	= build_string_literal (
+		strlen (IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ) ) + 1,
+		IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ) );
+	tree 					arg_id	= build_int_cst_type (
+		unsigned_type_node, DECL_UID (cfun->decl) );
+	gimple 					stmt;
 
+	stmt = gimple_build_call (decl, 2, arg_nm, arg_id);
+
+	gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
 }
 
 /**
@@ -62,9 +70,49 @@ runtime_start_function ()
  * @TODO Implement it
  */
 static void
-runtime_end_function ()
+runtime_end_function ( )
 {
+	int 					nb_prec = 0;
+	basic_block 			bb 		= EXIT_BLOCK_PTR;
+	edge 					target;
+	edge_iterator 			edge_it;
+	gimple_stmt_iterator 	gsi;
+	gimple_stmt_iterator 	gsi_p;
+	tree 					args 	= build_function_type_list (
+		void_type_node, ptr_type_node, unsigned_type_node, NULL_TREE);
+	tree 					decl 	= build_fn_decl (
+		"RUNTIME_end_function", args);
+	tree 					arg_nm  = build_string_literal (
+		strlen (IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ) ) + 1,
+		IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ) );
+	tree 					arg_id  = build_int_cst_type (
+		unsigned_type_node, DECL_UID (cfun->decl) );
+	gimple 					stmt;
 
+	stmt = gimple_build_call (decl, 2, arg_nm, arg_id);
+
+	FOR_EACH_EDGE (target, edge_it, bb->preds) ++nb_prec;
+
+	if (nb_prec == 1)
+	{
+		bb = bb->prev_bb;
+		
+		gsi_p = gsi_start_bb (bb);
+		gsi_next (&gsi_p);
+		while (! gsi_end_p (gsi_p) )
+		{
+			gsi = gsi_p;
+			gsi_next (&gsi_p);
+		}
+
+		gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
+
+		printf ("Simple blocks\n");
+	}
+	else
+	{
+		printf ("WARNING: Multiple blocks\n");
+	}
 }
 
 /*****************************************************************************/
@@ -75,7 +123,7 @@ runtime_end_function ()
  * @TODO Implement a compiler option?
  */
 static bool
-runtime_gate ()
+runtime_gate ( )
 {
 	return true;
 }
@@ -86,12 +134,10 @@ runtime_gate ()
  * @TODO Implement it
  */
 static unsigned
-runtime_exec ()
+runtime_exec ( )
 {
-	if (strcmp (IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ), "main") == 0)
-	{
-		runtime_start_program ();
-	}
+	runtime_start_function ();
+	runtime_end_function ();
 
 	return 0;
 }
