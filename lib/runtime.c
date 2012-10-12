@@ -12,7 +12,7 @@
 
 /**
  * Chain list structure which save for each called function the starter number
- * of ticks.
+ * of ticks. It has the same behaviour as a stack (push & pop).
  * @field val			Number of ticks
  * @field next			Next element of the list
  */
@@ -35,12 +35,14 @@ add_chrono_to_list (
 	int				id,
 	ticks 			val)
 {
+	// Allocate the element and fill it
 	chrono_list_t * elt = malloc (sizeof (chrono_list_t) );
 
 	elt->id 	= id;
 	elt->val 	= val;
 	elt->next 	= list;
 
+	// Add it at the start of the list
 	list = elt;
 
 	return list;
@@ -60,6 +62,7 @@ remove_chrono_from_list (
 {
 	chrono_list_t * elt = list->next;
 
+	// Fill return values (args) and destroy the first element
 	*id		= list->id;
 	*val	= list->val;
 	free (list);
@@ -79,8 +82,14 @@ static chrono_list_t *	chrono_to_save_list	= NULL;
  */
 static double			ticks_to_sec;
 
+/**
+ * Counter for calls.
+ */
 static int				count_id			= 1;
 
+/**
+ * Output file which will contain tracking information.
+ */
 static FILE				* tracking_output	= NULL;
 
 /*****************************************************************************/
@@ -98,13 +107,16 @@ run_chrono ( )
 	ticks  			s_tk;
 	ticks			e_tk;
 
+	// Open/create the output file
 	tracking_output = fopen ("dtrack.inst", "w");
 
+	// If the file cannot be opened
 	if (tracking_output == NULL)
 		fprintf (stderr, "The tracking file cannot be created! "
 			"Tracking will be disabled.\n");
 	else
 	{
+		// Calculate ticks/seconds ratio
 		gettimeofday (&s_tv, NULL);
 		s_tk = getticks ();
 		wait (50);
@@ -121,9 +133,11 @@ run_chrono ( )
 
 		ticks_to_sec = v_tv / (v_tk * NB_USEC_IN_SEC);
 
+		// Push the program chrono to the structure
 		chrono_to_save_list = add_chrono_to_list (
 			chrono_to_save_list, ++count_id, getticks () );
 
+		// Print the table header to the file
 		fprintf (tracking_output,
 			"+--------+------------------------------------------+"
 				"--------------+--------------------+--------------------+\n"
@@ -144,18 +158,25 @@ stop_chrono ( )
 	ticks 	start_time;
 	ticks 	end_time;
 
+	// If the output file was created
 	if (tracking_output != NULL)
 	{
 		end_time = getticks ();
 
+		// Pop the chrono
 		chrono_to_save_list = remove_chrono_from_list (
 			chrono_to_save_list, &id, &start_time);
 
+		// Print the table footer and the total execution time (calculated
+		// with elapsed ()) to the output file
 		fprintf (tracking_output, 
 			"+--------+------------------------------------------+"
 				"--------------+--------------------+--------------------+\n\n"
 			"Program total execution time: %f s\n",
 			elapsed (end_time, start_time) * ticks_to_sec);
+
+		// Close the file
+		fclose (tracking_output);
 	}
 }
 
@@ -171,8 +192,10 @@ RUNTIME_start_function (
 	const char * 	func_name,
 	unsigned 		fid)
 {
+	// If the output file was created
 	if (tracking_output != NULL)
 	{
+		// Push the chrono
 		chrono_to_save_list = add_chrono_to_list (
 			chrono_to_save_list, ++count_id, getticks () );
 	}
@@ -182,7 +205,6 @@ RUNTIME_start_function (
  * Return the elapsed number of ticks of the caller function
  * @func_name			Caller name
  * @fid					Caller ID
- * @TODO Implement it with a return statement?
  */
 void
 RUNTIME_end_function (
@@ -193,13 +215,16 @@ RUNTIME_end_function (
 	ticks	start_time;
 	ticks	end_time;
 
+	// If the output file was created
 	if (tracking_output != NULL)
 	{
 		end_time = getticks ();
 
+		// Pop the chrono
 		chrono_to_save_list = remove_chrono_from_list (
 			chrono_to_save_list, &id, &start_time);
 
+		// Print the function tracking information to the output file.
 		fprintf (tracking_output,
 			"| %6d | %40s | %12.6f | %18llu | %18llu |\n",
 			id, func_name, elapsed (end_time, start_time) * ticks_to_sec,

@@ -16,7 +16,6 @@
 /**
  * Information about the pass which is executed during middle_end step of
  * compilation.
- * @TODO Implement it.
  */
 struct register_pass_info runtime_pass;
 

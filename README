@@ -75,19 +75,7 @@ Partie II - Génération statique d'un fichier de description des fonctions
 		3 * M STORE
 
 Partie III - Réalisation d'une passe GCC pour l'instrumentation dynamique de code
-	On aimerait instrumenter le code pour avoir les informations pendant l'exécution du programme. Ainsi, on utilisera une librairie dynamique qui sera chargée à l'exécution. Le compilateur ajoutera des appels vers cette bibliothèque lors de la compilation.
-
-	Une solution possible est d'avoir dans la bibliothèque runtime :
-	- Entrée et sortie d'une fonction
-	- Capture du nom et de l'identifiant d'une fonction
-	- Mise à jour des structures de données comptabilisant le temps d'exécution ou les évènements
-
-	Les résultats attendus de cette phase de 'profilage' est une trace d'exécution.
-	Appel 1 à la fonction toto entrée cycle WW sortie cycle XX
-	[...]
-	Appel 153 à la fonction tutu entrée cycle YY sortie cycle WW
-
-	Pour cela il va falloir utiliser une fonction temps comme rdtsc ou gettimeofday (recherche Google à souhait)
+	DONE!!
 
 Partie IV - Gestion des fichiers de sortie
 	Nous avons donc, grâce aux parties II et III deux fichiers de sortie. Le premier est généré pendant la compilation et donne des informations sur le code et le deuxième est généré pendant l'exécution. La question de cette quatrième partie est de voir si nous pouvons corréler les deux.

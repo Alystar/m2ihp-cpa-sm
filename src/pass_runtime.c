@@ -7,8 +7,7 @@
 /*****************************************************************************/
 
 /**
- * Calls the start_function () function of the runtime library.
- * @TODO Implement it
+ * Calls the RUNTIME_start_function () function of the runtime library.
  */
 static void
 runtime_start_function ( )
@@ -26,14 +25,15 @@ runtime_start_function ( )
 		unsigned_type_node, DECL_UID (cfun->decl) );
 	gimple 					stmt;
 
+	// Create the call to RUNTIME_start_function
 	stmt = gimple_build_call (decl, 2, arg_nm, arg_id);
 
+	// Insert it before the first gimple node of the function
 	gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
 }
 
 /**
- * Calls the end_function () function of the runtime library.
- * @TODO Implement it
+ * Calls the RUNTIME_end_function () function of the runtime library.
  */
 static void
 runtime_end_function ( )
@@ -55,8 +55,10 @@ runtime_end_function ( )
 		unsigned_type_node, DECL_UID (cfun->decl) );
 	gimple 					stmt;
 
+	// Create the call to RUNTIME_end_function
 	stmt = gimple_build_call (decl, 2, arg_nm, arg_id);
 
+	// For each blocks which leads to the EXIT_BLOCK
 	FOR_EACH_EDGE (target, edge_it, bb->preds)
 	{
 		gsi_p = gsi_start_bb (target->src);
@@ -64,6 +66,7 @@ runtime_end_function ( )
 
 		gsi_next (&gsi_p);
 
+		// Search the last statement
 		while (! gsi_end_p (gsi_p) )
 		{
 			fflush (stdout);
@@ -71,6 +74,7 @@ runtime_end_function ( )
 			gsi_next (&gsi_p);
 		}
 
+		// Insert the call before the last gimple node
 		gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
 	}
 }
@@ -89,7 +93,8 @@ runtime_gate ( )
 }
 
 /**
- * Executes the pass: 
+ * Executes the pass each time a function is encountered by calling runtime
+ * library functions
  * @return				0 if correctly executed, another else
  */
 static unsigned
