@@ -18,6 +18,7 @@
  */
 typedef struct chrono_list
 {
+	int 				id;
 	ticks 				val;
 	struct chrono_list 	* next;
 } chrono_list_t;
@@ -31,12 +32,14 @@ typedef struct chrono_list
 static chrono_list_t *
 add_chrono_to_list (
 	chrono_list_t	* list,
+	int				id,
 	ticks 			val)
 {
 	chrono_list_t * elt = malloc (sizeof (chrono_list_t) );
 
-	elt->val = val;
-	elt->next = list;
+	elt->id 	= id;
+	elt->val 	= val;
+	elt->next 	= list;
 
 	list = elt;
 
@@ -52,11 +55,13 @@ add_chrono_to_list (
 static chrono_list_t *
 remove_chrono_from_list (
 	chrono_list_t	* list,
+	int				* id,
 	ticks			* val)
 {
 	chrono_list_t * elt = list->next;
 
-	*val = list->val;
+	*id		= list->id;
+	*val	= list->val;
 	free (list);
 
 	return elt;
@@ -67,12 +72,16 @@ remove_chrono_from_list (
 /**
  * Global list which contains all the function chronos.
  */
-static chrono_list_t * chrono_to_save_list = NULL;
+static chrono_list_t *	chrono_to_save_list	= NULL;
 
 /**
  * Constant which determines ticks/seconds ratio.
  */
-static double ticks_to_sec;
+static double			ticks_to_sec;
+
+static int				count_id			= 1;
+
+static FILE				* tracking_output	= NULL;
 
 /*****************************************************************************/
 
@@ -89,25 +98,40 @@ run_chrono ( )
 	ticks  			s_tk;
 	ticks			e_tk;
 
+	tracking_output = fopen ("dtrack.inst", "w");
 
-	gettimeofday (&s_tv, NULL);
-	s_tk = getticks ();
-	wait (50);
-	gettimeofday (&e_tv, NULL);
-	e_tk = getticks ();
-
-	v_tv = e_tv.tv_usec - s_tv.tv_usec;
-	if (s_tv.tv_sec != e_tv.tv_sec)
+	if (tracking_output == NULL)
+		fprintf (stderr, "The tracking file cannot be created! "
+			"Tracking will be disabled.\n");
+	else
 	{
-		v_tv += NB_USEC_IN_SEC;
+		gettimeofday (&s_tv, NULL);
+		s_tk = getticks ();
+		wait (50);
+		gettimeofday (&e_tv, NULL);
+		e_tk = getticks ();
+
+		v_tv = e_tv.tv_usec - s_tv.tv_usec;
+		if (s_tv.tv_sec != e_tv.tv_sec)
+		{
+			v_tv += NB_USEC_IN_SEC;
+		}
+
+		v_tk = elapsed (e_tk, s_tk);
+
+		ticks_to_sec = v_tv / (v_tk * NB_USEC_IN_SEC);
+
+		chrono_to_save_list = add_chrono_to_list (
+			chrono_to_save_list, ++count_id, getticks () );
+
+		fprintf (tracking_output,
+			"+--------+------------------------------------------+"
+				"--------------+--------------------+--------------------+\n"
+			"| CALL   | FUNCTION NAME                            |"
+				" INC TIME (S) | ENTRY CYCLE        | EXIT CYCLE         |\n"
+			"+--------+------------------------------------------+"
+				"--------------+--------------------+--------------------+\n");
 	}
-
-	v_tk = elapsed (e_tk, s_tk);
-
-	ticks_to_sec = v_tv / (v_tk * NB_USEC_IN_SEC);
-
-	chrono_to_save_list = add_chrono_to_list (
-		chrono_to_save_list, getticks () );
 }
 
 /**
@@ -116,16 +140,23 @@ run_chrono ( )
 static __attribute__ ((destructor)) void
 stop_chrono ( )
 {
-	ticks start_time;
-	ticks end_time;
+	int		id;
+	ticks 	start_time;
+	ticks 	end_time;
 
-	end_time = getticks ();
+	if (tracking_output != NULL)
+	{
+		end_time = getticks ();
 
-	chrono_to_save_list = remove_chrono_from_list (
-		chrono_to_save_list, &start_time);
+		chrono_to_save_list = remove_chrono_from_list (
+			chrono_to_save_list, &id, &start_time);
 
-	printf ("Main total time: %f\n",
-		elapsed (end_time, start_time) * ticks_to_sec);
+		fprintf (tracking_output, 
+			"+--------+------------------------------------------+"
+				"--------------+--------------------+--------------------+\n\n"
+			"Program total execution time: %f s\n",
+			elapsed (end_time, start_time) * ticks_to_sec);
+	}
 }
 
 /*****************************************************************************/
@@ -134,17 +165,17 @@ stop_chrono ( )
  * Save the number of ticks of the caller function
  * @func_name			Caller name
  * @fid					Caller ID
- * @TODO Implement it
  */
 void
 RUNTIME_start_function (
 	const char * 	func_name,
 	unsigned 		fid)
 {
-	chrono_to_save_list = add_chrono_to_list (
-		chrono_to_save_list, getticks () );
-
-	printf ("start_function called for: %s\n", func_name);
+	if (tracking_output != NULL)
+	{
+		chrono_to_save_list = add_chrono_to_list (
+			chrono_to_save_list, ++count_id, getticks () );
+	}
 }
 
 /**
@@ -158,16 +189,20 @@ RUNTIME_end_function (
 	const char * 	func_name,
 	unsigned		fid)
 {
-	ticks start_time;
-	ticks end_time;
+	int		id;
+	ticks	start_time;
+	ticks	end_time;
 
-	end_time = getticks ();
+	if (tracking_output != NULL)
+	{
+		end_time = getticks ();
 
-	chrono_to_save_list = remove_chrono_from_list (
-		chrono_to_save_list, &start_time);
+		chrono_to_save_list = remove_chrono_from_list (
+			chrono_to_save_list, &id, &start_time);
 
-	printf ("end_function called for: %s\n"
-			"Total time: %f\n",
-			func_name,
-			elapsed (end_time, start_time) * ticks_to_sec);
+		fprintf (tracking_output,
+			"| %6d | %40s | %12.6f | %18llu | %18llu |\n",
+			id, func_name, elapsed (end_time, start_time) * ticks_to_sec,
+			start_time, end_time);
+	}
 }
