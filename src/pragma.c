@@ -79,37 +79,6 @@ read_function_list (
 }
 
 /**
- * Search a function in the list.
- * @param list 			List to read
- * @param name 			Function name
- * @param file 			File which contains the function
- * @return				1 if the function is found, 0 else
- * @TODO Turn it to DEPRECATED?
- */
-static int
-search_function_in_list (
-	function_list_t * list,
-	const char		* name,
-	const char		* file)
-{
-	function_list_t * ptr = list;
-
-	/* For each element */
-	while (ptr != NULL)
-	{
-		/* If the function is found, return 1 */
-		if (strcmp (name, ptr->name) == 0 && strcmp (file, ptr->file) == 0)
-			return 1;
-
-		ptr = ptr->next;
-	}
-
-	/* The function was not found */
-
-	return 0;
-}
-
-/**
  * Search a function in the list and delete it if found.
  * @param list 			List to read
  * @param name 			Function name
@@ -145,6 +114,9 @@ search_and_delete_function_in_list (
 
 			return 1;
 		}
+		
+		previous_ptr = current_ptr;
+		current_ptr = current_ptr->next;
 	}
 
 	/* The function was not found */
@@ -181,6 +153,11 @@ delete_function_list (
  */
 static function_list_t * func_to_inst_list = NULL;
 
+/**
+ * Output file which will contain tracking information.
+ */
+static FILE				* tracking_output	= NULL;
+
 /*****************************************************************************/
 
 /**
@@ -194,6 +171,80 @@ pragma_gate ( )
 	return true;
 }
 
+static void
+pragma_read_operand (tree op, bool left, int * nb_load, int * nb_store)
+{
+	int i = 0;
+	
+	if (op == NULL)
+		return;
+	
+	switch (TREE_CODE (op) )
+	{
+		case MEM_REF: case ARRAY_REF:
+			if (left)
+				++ (*nb_store);
+			else
+				++ (*nb_load);
+
+			break;
+	}
+	
+	while (i < TREE_OPERAND_LENGTH (op) )
+	{
+		
+		pragma_read_operand (TREE_OPERAND (op, i) ,
+			i == 0, nb_load, nb_store);
+		
+		++i;
+	}
+}
+
+static void
+pragma_read_statement (const char * filename, const char * function)
+{
+	int						i;
+	int						nb_load		= 0;
+	int						nb_store	= 0;
+	basic_block				bb;
+	gimple_stmt_iterator	gsi;
+	gimple 					stmt;
+
+	FOR_EACH_BB (bb)
+	{
+		gsi = gsi_start_bb (bb);
+		while (! gsi_end_p (gsi) )
+		{
+			stmt = gsi_stmt (gsi);
+			if (is_gimple_assign (stmt) )
+			{
+				int i = 0;
+				
+				while (i < gimple_num_ops (stmt) )
+				{
+					pragma_read_operand (gimple_ops (stmt) [i] ,
+						i == 0, &nb_load, &nb_store);
+					
+					++i;
+				}
+			}
+
+			gsi_next (&gsi);
+		}
+	}
+	
+	fprintf (tracking_output, "%s:%s\n"
+		"\t%d LOAD\n"
+		"\t%d STORE\n\n",
+		filename, function, nb_load, nb_store);
+		
+	if (func_to_inst_list == NULL && tracking_output != NULL)
+	{
+		fclose (tracking_output);
+		tracking_output = NULL;
+	}
+}
+
 /**
  * Executes the pass: for each function, count the number of load & store
  * statements and write them in a file.
@@ -203,15 +254,21 @@ pragma_gate ( )
 static unsigned
 pragma_exec ( )
 {
-	// Search if the function has to be instrumented
-	if (search_and_delete_function_in_list (
-		&func_to_inst_list,
-		IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ),
-		input_filename) == 1) 
+	if (tracking_output != NULL)
 	{
-		printf ("The function '%s' of '%s' will be instrumented\n",
+		// Search if the function has to be instrumented
+		if (search_and_delete_function_in_list (
+			&func_to_inst_list,
 			IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ),
-			input_filename);
+			input_filename) == 1) 
+		{
+			printf ("The function '%s' of '%s' will be instrumented\n",
+				IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ),
+				input_filename);
+			
+			pragma_read_statement (input_filename,
+				IDENTIFIER_POINTER (DECL_NAME (cfun->decl ) ) );
+		}
 	}
 
 	return 0;
@@ -238,7 +295,7 @@ struct register_pass_info pragma_pass =
 	.pass = &pragma_opt_pass,
 	.reference_pass_name = "cfg",
 	.ref_pass_instance_number = 0,
-	.pos_op = PASS_POS_INSERT_BEFORE
+	.pos_op = PASS_POS_INSERT_AFTER
 };
 
 /*****************************************************************************/
@@ -313,5 +370,11 @@ instrument_pragma (
 	void * event_data,
 	void * user_data)
 {
-	c_register_pragma (NULL, "instrumente", handle_instrument_pragma);
+	tracking_output = fopen ("strack.inst", "w");
+	
+	if (tracking_output == NULL)
+		fprintf (stderr, "The tracking file cannot be created! "
+			"Tracking will be disabled.\n");
+	else
+		c_register_pragma (NULL, "instrumente", handle_instrument_pragma);
 }
