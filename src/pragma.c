@@ -201,11 +201,90 @@ pragma_read_operand (tree op, bool left, int * nb_load, int * nb_store)
 }
 
 static void
-pragma_read_statement (const char * filename, const char * function)
+pragma_read_loop (struct loop * loop)
+{
+	basic_block  			* bb;
+	gimple_stmt_iterator	gsi;
+	gimple 					stmt;
+	double_int				nit;
+	HOST_WIDE_INT			nit_2;
+	int 					i;
+	long unsigned uid;
+	
+		if (estimated_loop_iterations (loop, false, &nit) )
+		{
+			bb = get_loop_body (loop);
+//			printf ("Got a loop with %lu / %lu iterations containing %d blocks.\n", nit.low, nit.high, loop->num_nodes);
+
+			for (i = 0; i < loop->num_nodes; ++i)
+			{
+//				printf ("New Block: %d\n", bb[i]->index);
+				gsi = gsi_start_bb (bb [i]);
+				while (! gsi_end_p (gsi) )
+				{
+					stmt = gsi_stmt (gsi);
+
+					gimple_set_uid (stmt, gimple_uid (stmt) * nit.low);
+
+					gsi_next (&gsi);
+				}
+			}
+
+		}
+		else
+		{
+//			printf ("Got the %d loop without estimations containing %d blocks.\n", loop->num, loop->num_nodes);
+
+			bb = get_loop_body (loop);
+
+			for (i = 0; i < loop->num_nodes; ++i)
+			{
+				gsi = gsi_start_bb (bb [i]);
+				while (! gsi_end_p (gsi) )
+				{
+					stmt = gsi_stmt (gsi);
+
+					gimple_set_uid (stmt, 0);
+
+					gsi_next (&gsi);
+				}
+			}
+		}
+	
+
+	if (loop->inner != NULL)
+	{
+//		printf ("Go inner\n");
+		pragma_read_loop (loop->inner);
+//		printf ("Go outer\n");
+	}
+	if (loop->next != NULL)
+	{
+//		printf ("Go next\n");
+		pragma_read_loop (loop->next);
+	}
+
+	//bb = get_loop_body (loop);
+
+	//gsi = gsi_start_bb (*bb);
+	//while (! gsi_end_p (gsi) )
+	//{
+	//	stmt = gsi_stmt (gsi);
+
+	//	printf ("We get: %u\n", gimple_uid (stmt) );
+
+	//	gsi_next (&gsi);
+	//}
+
+}
+
+static void
+pragma_read_function (const char * filename, const char * function)
 {
 	int						i;
 	int						nb_load		= 0;
 	int						nb_store	= 0;
+	unsigned				loop_factor;
 	basic_block				bb;
 	gimple_stmt_iterator	gsi;
 	gimple 					stmt;
@@ -213,30 +292,75 @@ pragma_read_statement (const char * filename, const char * function)
 	FOR_EACH_BB (bb)
 	{
 		gsi = gsi_start_bb (bb);
-		while (! gsi_end_p (gsi) )
+		while (!gsi_end_p (gsi) )
 		{
 			stmt = gsi_stmt (gsi);
-			if (is_gimple_assign (stmt) )
-			{
-				int i = 0;
-				
-				while (i < gimple_num_ops (stmt) )
-				{
-					pragma_read_operand (gimple_ops (stmt) [i] ,
-						i == 0, &nb_load, &nb_store);
-					
-					++i;
-				}
-			}
+
+			gimple_set_uid (stmt, 1);
 
 			gsi_next (&gsi);
 		}
 	}
-	
-	fprintf (tracking_output, "%s:%s\n"
-		"\t%d LOAD\n"
-		"\t%d STORE\n\n",
-		filename, function, nb_load, nb_store);
+
+	pragma_read_loop (current_loops->tree_root->inner);
+
+	fprintf (tracking_output, "%s:%s\n", filename, function);
+
+	FOR_EACH_BB (bb)
+	{
+		nb_load = 0;
+		nb_store = 0;
+
+		gsi = gsi_start_bb (bb);
+
+		if (! gsi_end_p (gsi) )
+		{
+			loop_factor = gimple_uid (gsi_stmt (gsi) );
+
+			while (! gsi_end_p (gsi) )
+			{
+				stmt = gsi_stmt (gsi);
+				if (is_gimple_assign (stmt) )
+				{
+					int i = 0;
+				
+					while (i < gimple_num_ops (stmt) )
+					{
+						pragma_read_operand (gimple_ops (stmt) [i] ,
+							i == 0, &nb_load, &nb_store);
+					
+						++i;
+					}
+				}
+
+				gsi_next (&gsi);
+			}
+
+			if (loop_factor == 0)
+			{
+				if (nb_load != 0)
+					fprintf (tracking_output, "\t%d * N LOAD\n", nb_load);
+				if (nb_store != 0)
+					fprintf (tracking_output, "\t%d * N STORE\n", nb_store);
+			}
+			else if (loop_factor == 1)
+			{
+				if (nb_load != 0)
+					fprintf (tracking_output, "\t%d LOAD\n", nb_load);
+				if (nb_store != 0)
+					fprintf (tracking_output, "\t%d STORE\n", nb_store);
+			}
+			else
+			{
+				if (nb_load != 0)
+					fprintf (tracking_output, "\t%d * %u LOAD\n", nb_load, loop_factor);
+				if (nb_store != 0)
+					fprintf (tracking_output, "\t%d * %u STORE\n", nb_store, loop_factor);
+			}
+		}
+	}
+
+	fprintf (tracking_output, "\n");
 		
 	if (func_to_inst_list == NULL && tracking_output != NULL)
 	{
@@ -266,7 +390,7 @@ pragma_exec ( )
 				IDENTIFIER_POINTER (DECL_NAME (cfun->decl) ),
 				input_filename);
 			
-			pragma_read_statement (input_filename,
+			pragma_read_function (input_filename,
 				IDENTIFIER_POINTER (DECL_NAME (cfun->decl ) ) );
 		}
 	}
@@ -282,7 +406,7 @@ pragma_exec ( )
 static struct opt_pass pragma_opt_pass =
 {
 	.type = GIMPLE_PASS,
-	.name = "Pragma Instrumente Plug",
+	.name = "Pragma Instrument Plug",
 	.gate = pragma_gate,
 	.execute = pragma_exec
 };
@@ -293,7 +417,7 @@ static struct opt_pass pragma_opt_pass =
 struct register_pass_info pragma_pass =
 {
 	.pass = &pragma_opt_pass,
-	.reference_pass_name = "cfg",
+	.reference_pass_name = "*record_bounds",
 	.ref_pass_instance_number = 0,
 	.pos_op = PASS_POS_INSERT_AFTER
 };
@@ -376,5 +500,5 @@ instrument_pragma (
 		fprintf (stderr, "The tracking file cannot be created! "
 			"Tracking will be disabled.\n");
 	else
-		c_register_pragma (NULL, "instrumente", handle_instrument_pragma);
+		c_register_pragma (NULL, "instrument", handle_instrument_pragma);
 }

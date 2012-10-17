@@ -20,11 +20,11 @@ void
 plugin_register (
 	struct plugin_name_args		* plugin_info)
 {
-//	register_callback (plugin_info->base_name,
-//		PLUGIN_PRAGMAS, instrument_pragma, NULL);
+	register_callback (plugin_info->base_name,
+		PLUGIN_PRAGMAS, instrument_pragma, NULL);
 
-//	register_callback (plugin_info->base_name,
-//		PLUGIN_PASS_MANAGER_SETUP, 0, &pragma_pass);
+	register_callback (plugin_info->base_name,
+		PLUGIN_PASS_MANAGER_SETUP, 0, &pragma_pass);
 
 	register_callback (plugin_info->base_name,
 		PLUGIN_PASS_MANAGER_SETUP, 0, &runtime_pass);

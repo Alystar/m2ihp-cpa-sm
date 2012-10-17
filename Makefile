@@ -2,7 +2,7 @@ CC=gcc
 
 CCFLAGS=-Wall -Wextra -O2 -I include/
 CCPLUGFLAGS=-O2 -I include/ -I `gcc -print-file-name=plugin`/include -fPIC
-CCTESTFLAGS=-fplugin=./$(EXEC) -Wl,-rpath,./
+CCTESTFLAGS=-O3 -fplugin=./$(EXEC) -Wl,-rpath,./
 CCLIBFLAGS=-O2 -I include/ -fPIC -shared
 
 SRC=$(wildcard src/*.c)

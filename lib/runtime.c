@@ -119,7 +119,7 @@ run_chrono ( )
 		// Calculate ticks/seconds ratio
 		gettimeofday (&s_tv, NULL);
 		s_tk = getticks ();
-		wait (50);
+		sleep (1);
 		gettimeofday (&e_tv, NULL);
 		e_tk = getticks ();
 
