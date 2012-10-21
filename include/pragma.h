@@ -10,6 +10,7 @@
 #include <function.h>
 #include <gimple.h>
 #include <input.h>
+#include <cfgloop.h>
 
 #include <c-family/c-pragma.h>
 

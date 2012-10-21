@@ -94,7 +94,7 @@ runtime_gate ( )
 
 /**
  * Executes the pass each time a function is encountered by calling runtime
- * library functions
+ * library functions.
  * @return				0 if correctly executed, another else
  */
 static unsigned

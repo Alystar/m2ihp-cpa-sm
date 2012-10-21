@@ -35,44 +35,7 @@ Partie I - Gestion des pragmas et de l'option
 	DONE!!
 
 Partie II - Génération statique d'un fichier de description des fonctions
-	Il s'agit pour chaque fonction ou fragment de code ciblés par un pragma de compter le nombre d'instruction de type LOAD ou STORE. A la fin de l'analyse ces informations sont stockées dans un fichier fixé en dur dans votre code (par exemple : instrumentation.txt)
-
-	Deux extensions optionnelles pour cette partie :
-		1) Avoir une option pour définir le fichier de sortie à la compilation
-		2) Il serait souhaitable de capturer dans le fichier résultats les bornes des boucles, ainsi on souhaite obtenir une équation statique décrivant le comportement mémoire de la fonction.
-
-	Exemple pour une fonction :
-	int toto (int *tab)
-	{
-		int sum = tab[0] + tab[1] + tab[2];
-		int i;
-
-		for (i = 0; i < N; i++)
-		{
-			sym += tab[i] + 3 * tab[i+1];
-			tab[i+1] = sum;
-		}
-
-		sum += tab[0] + tab[1];
-
-		for (i = 0; i < M; i++)
-		{
-			sum += tab[i] + 3 * tab[i+1] + 4 * tab[i-1];
-			tab[i+1] = sum;
-			tab[i+2] = sum * 2;
-			tab[i+3] = sum * 3;
-		}
-	}
-
-	On aurait en sortie :
-
-	fonction toto
-		3 LOAD
-		2 * N LOAD
-		1 * N STORE
-		2 LOAD
-		3 * M LOAD
-		3 * M STORE
+	DONE!!
 
 Partie III - Réalisation d'une passe GCC pour l'instrumentation dynamique de code
 	DONE!!
