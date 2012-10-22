@@ -18,12 +18,15 @@ LDFLAGS=-L./ -lruntime
 SRCTEST=$(wildcard test/*.c)
 TEST=$(patsubst %.c, %, $(SRCTEST))
 
-.PHONY: all update plugin lib test clean mrproper cleantest cleanlib debug
+.PHONY: all update plugin lib test clean mrproper cleantest cleanlib debug instrument
 
 all: lib $(EXEC)
 
 $(EXEC): $(OBJ)
 	$(CC) -shared $^ -o $@
+	yacc -o lexer/y.tab.c -d -v lexer/parser.yy
+	lex -o lexer/lex.yy.c lexer/parser.lex
+	$(CC) lexer/y.tab.c lexer/lex.yy.c -lfl -o instrument
 
 $(OBJ): $(BUILDDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
@@ -45,6 +48,9 @@ lib: $(LIB)
 # plugin: $(PLUG)
 
 test: $(TEST)
+
+instrument: 
+	cat dtrack.inst strack.inst | ./instrument
 
 clean:
 	rm -f $(OBJ)

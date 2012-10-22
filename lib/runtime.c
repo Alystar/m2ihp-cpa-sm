@@ -75,7 +75,7 @@ remove_chrono_from_list (
 /**
  * Global list which contains all the function chronos.
  */
-static chrono_list_t *	chrono_to_save_list	= NULL;
+static chrono_list_t	* chrono_to_save_list	= NULL;
 
 /**
  * Constant which determines ticks/seconds ratio.
@@ -85,12 +85,12 @@ static double			ticks_to_sec;
 /**
  * Counter for calls.
  */
-static int				count_id			= 1;
+static int				count_id				= 1;
 
 /**
  * Output file which will contain tracking information.
  */
-static FILE				* tracking_output	= NULL;
+static FILE				* tracking_output		= NULL;
 
 /*****************************************************************************/
 
@@ -172,7 +172,7 @@ stop_chrono ( )
 		fprintf (tracking_output, 
 			"+--------+------------------------------------------+"
 				"--------------+--------------------+--------------------+\n\n"
-			"Program total execution time: %f s\n",
+			"Program total execution time (s): %f\n",
 			elapsed (end_time, start_time) * ticks_to_sec);
 
 		// Close the file
@@ -189,8 +189,8 @@ stop_chrono ( )
  */
 void
 RUNTIME_start_function (
-	const char * 	func_name,
-	unsigned 		fid)
+	const char 	* func_name,
+	unsigned 	fid)
 {
 	// If the output file was created
 	if (tracking_output != NULL)
@@ -208,8 +208,8 @@ RUNTIME_start_function (
  */
 void
 RUNTIME_end_function (
-	const char * 	func_name,
-	unsigned		fid)
+	const char	* func_name,
+	unsigned	fid)
 {
 	int		id;
 	ticks	start_time;

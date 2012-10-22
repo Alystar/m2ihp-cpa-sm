@@ -193,7 +193,7 @@ pragma_read_operand (tree op, bool left, int * nb_load, int * nb_store)
 	while (i < TREE_OPERAND_LENGTH (op) )
 	{
 		
-		pragma_read_operand (TREE_OPERAND (op, i) ,
+		pragma_read_operand (TREE_OPERAND (op, i),
 			i == 0, nb_load, nb_store);
 		
 		++i;
@@ -203,79 +203,52 @@ pragma_read_operand (tree op, bool left, int * nb_load, int * nb_store)
 static void
 pragma_read_loop (struct loop * loop)
 {
+	int 					i;
 	basic_block  			* bb;
 	gimple_stmt_iterator	gsi;
 	gimple 					stmt;
 	double_int				nit;
-	HOST_WIDE_INT			nit_2;
-	int 					i;
-	long unsigned uid;
 	
-		if (estimated_loop_iterations (loop, false, &nit) )
+	if (estimated_loop_iterations (loop, false, &nit) )
+	{
+		bb = get_loop_body (loop);
+
+		for (i = 0; i < loop->num_nodes; ++i)
 		{
-			bb = get_loop_body (loop);
-//			printf ("Got a loop with %lu / %lu iterations containing %d blocks.\n", nit.low, nit.high, loop->num_nodes);
-
-			for (i = 0; i < loop->num_nodes; ++i)
+			gsi = gsi_start_bb (bb [i]);
+			while (! gsi_end_p (gsi) )
 			{
-//				printf ("New Block: %d\n", bb[i]->index);
-				gsi = gsi_start_bb (bb [i]);
-				while (! gsi_end_p (gsi) )
-				{
-					stmt = gsi_stmt (gsi);
+				stmt = gsi_stmt (gsi);
 
-					gimple_set_uid (stmt, gimple_uid (stmt) * nit.low);
+				gimple_set_uid (stmt, gimple_uid (stmt) * nit.low);
 
-					gsi_next (&gsi);
-				}
-			}
-
-		}
-		else
-		{
-//			printf ("Got the %d loop without estimations containing %d blocks.\n", loop->num, loop->num_nodes);
-
-			bb = get_loop_body (loop);
-
-			for (i = 0; i < loop->num_nodes; ++i)
-			{
-				gsi = gsi_start_bb (bb [i]);
-				while (! gsi_end_p (gsi) )
-				{
-					stmt = gsi_stmt (gsi);
-
-					gimple_set_uid (stmt, 0);
-
-					gsi_next (&gsi);
-				}
+				gsi_next (&gsi);
 			}
 		}
-	
+	}
+	else
+	{
+		bb = get_loop_body (loop);
 
+		for (i = 0; i < loop->num_nodes; ++i)
+		{
+			gsi = gsi_start_bb (bb [i]);
+			while (! gsi_end_p (gsi) )
+			{
+				stmt = gsi_stmt (gsi);
+
+				gimple_set_uid (stmt, 0);
+
+				gsi_next (&gsi);
+			}
+		}
+	}
+	
 	if (loop->inner != NULL)
-	{
-//		printf ("Go inner\n");
 		pragma_read_loop (loop->inner);
-//		printf ("Go outer\n");
-	}
+
 	if (loop->next != NULL)
-	{
-//		printf ("Go next\n");
 		pragma_read_loop (loop->next);
-	}
-
-	//bb = get_loop_body (loop);
-
-	//gsi = gsi_start_bb (*bb);
-	//while (! gsi_end_p (gsi) )
-	//{
-	//	stmt = gsi_stmt (gsi);
-
-	//	printf ("We get: %u\n", gimple_uid (stmt) );
-
-	//	gsi_next (&gsi);
-	//}
-
 }
 
 static void
@@ -304,7 +277,7 @@ pragma_read_function (const char * filename, const char * function)
 
 	pragma_read_loop (current_loops->tree_root->inner);
 
-	fprintf (tracking_output, "%s:%s\n", filename, function);
+	fprintf (tracking_output, "%s\n", function);
 
 	FOR_EACH_BB (bb)
 	{
