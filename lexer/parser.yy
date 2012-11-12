@@ -6,18 +6,23 @@
 	#include <sys/stat.h>
     #include <sys/types.h>
 
-	extern void exit(int);
+    #include "lexer_lists.h"
+
+	extern void exit (int);
 %}
 
+/******************************************************************************/
 
+/* Definitions */
 
-/* Definition des tokens du langage */
+/* Definition of YYSTYPE which can contain a string, an integer or a real */
 %union {
 	int ival;
 	double dval;
 	char * str;
 }
 
+/* Language tokens */
 %token <str>	FUNCTIONNAME
 %token <dval>	REALNUMBER
 %token <ival>	INTEGER
@@ -27,7 +32,12 @@
 %token			UNKNOWN
 %token 			ENDLINE
 
+/* Start token */
 %start INPUT
+
+/******************************************************************************/
+
+/* Rules */
 
 %%
 INPUT	: LINE ENDLINE INPUT
@@ -36,7 +46,8 @@ INPUT	: LINE ENDLINE INPUT
 LINE	: INTEGER FUNCTIONNAME REALNUMBER INTEGER INTEGER
 			{
 				double ca_time = call_time ($1, global_dynamic_list);
-				global_dynamic_list = new_element ($1, $3, $3 - ca_time, $2, global_dynamic_list);
+				global_dynamic_list = new_element ($1, $3, $3 - ca_time,
+					$2, global_dynamic_list);
  			}
 		| REALNUMBER
 			{
@@ -44,7 +55,8 @@ LINE	: INTEGER FUNCTIONNAME REALNUMBER INTEGER INTEGER
 			}
 		| FUNCTIONNAME
 			{
-				global_static_list = new_static_element ($1, global_static_list);
+				global_static_list = new_static_element ($1,
+					global_static_list);
 			}
 		| INTEGER FACT UNKNOWN LOAD
 			{
@@ -78,32 +90,17 @@ LINE	: INTEGER FUNCTIONNAME REALNUMBER INTEGER INTEGER
 
 /******************************************************************************/
 
-struct dyn_function_info {
-	int 						call;
-	double 						in_time;
-	double 						ex_time;
-	char						* name;
-	struct dyn_function_info 	* next;
-};
+/* Functions */
 
-struct dyn_function_info *
-new_element (
-	const int					call,
-	const double				in_time,
-	const double				ex_time,
-	char						* name,
-	struct dyn_function_info	* list)
-{
-	struct dyn_function_info * new_list =
-		malloc (sizeof (struct dyn_function_info));
-	new_list->call = call;
-	new_list->in_time = in_time;
-	new_list->ex_time = ex_time;
-	new_list->name = name;
-	new_list->next = list;
-	return new_list;
-}
-
+/**
+ * Search instance values of a function to sum them and get average information.
+ * @param count
+ * @param name
+ * @param ex_time
+ * @param list
+ * @param det_list
+ * @return				The updated list
+ */
 struct dyn_function_info *
 search_values (
 	int 				* count,
@@ -112,17 +109,18 @@ search_values (
 	struct dyn_function_info * list,
 	struct dyn_function_info ** det_list)
 {
-	struct dyn_function_info * ptr = list;
-	struct dyn_function_info * prev;
-	struct dyn_function_info * first;
-	FILE				* graph_output;
-	FILE 				* data_output;
+	struct dyn_function_info	* ptr = list;
+	struct dyn_function_info	* prev;
+	struct dyn_function_info	* first;
+	FILE						* graph_output;
+	FILE						* data_output;
 
 	if (ptr == NULL)
 		return list;
 
 	/**********************************************************************/
 
+	// Creating the gnuplot script
 	graph_output = fopen ("./inst_graph/tmp.plt", "w");
 
 	fprintf (graph_output,
@@ -211,28 +209,19 @@ search_values (
 	return first;
 }
 
-struct dyn_function_info *
-del_list (struct dyn_function_info * list)
-{
-	struct dyn_function_info* ptr;
-	
-	ptr = list;
-	while (ptr != NULL)
-	{
-		list = list->next;
-		free (ptr);
-		ptr = list;
-	}
-
-	return NULL;
-}
-
+/**
+ * Sum inclusive execution times of functions which are called by the 'call'
+ * indexed function.
+ * @param call			Index of the caller function
+ * @param list			List of elements
+ * @return				The sum of inclusive execution times
+ */
 double
 call_time (
-	const int			call,
+	const int					call,
 	struct dyn_function_info	* list)
 {
-	double 				sum		= 0.0;
+	double 						sum		= 0.0;
 	struct dyn_function_info	* ptr 	= list;
 	
 	while (ptr != NULL && ptr->call > call)
@@ -246,31 +235,16 @@ call_time (
 
 /******************************************************************************/
 
-struct sta_function_info {
-	int 						nb_load;
-	int 						nb_store;
-	int							ndet_load;
-	int							ndet_store;
-	char						* name;
-	struct sta_function_info 	* next;
-};
-
-struct sta_function_info *
-new_static_element (
-	char						* name,
-	struct sta_function_info	* list)
-{
-	struct sta_function_info * new_list =
-		malloc (sizeof (struct sta_function_info));
-	new_list->nb_load		= 0;
-	new_list->nb_store		= 0;
-	new_list->ndet_load		= 0;
-	new_list->ndet_store	= 0;
-	new_list->name			= name;
-	new_list->next			= list;
-	return new_list;
-}
-
+/**
+ * Get static information for a given function (if it exists).
+ * @param name			Searched function name
+ * @param nb_load		Function load number
+ * @param nb_store		Function store number
+ * @field ndet_load		The function gets a load in a non determined loop
+ * @field ndet_store	The function gets a store in a non determined loop
+ * @param list			List of elements
+ * @return				The updated list
+ */
 struct sta_function_info *
 search_static_values (
 	char						* name,
@@ -284,8 +258,10 @@ search_static_values (
 	struct sta_function_info	* prev = NULL;
 	int 						find = 0;
 
+	// Search the element
 	while (ptr != NULL)
 	{
+		// The element is found
 		if (strcmp (name, ptr->name) == 0)
 		{
 			*nb_load = ptr->nb_load;
@@ -298,6 +274,7 @@ search_static_values (
 			else
 				prev->next = ptr->next;
 
+			// Free the element is treated
 			free (ptr);
 			find = 1;
 			break;
@@ -307,6 +284,7 @@ search_static_values (
 		ptr = ptr->next;
 	}
 
+	// If the function was not found, give a special value to nb_load
 	if (! find)
 	{
 		*nb_load = -1;
@@ -315,46 +293,56 @@ search_static_values (
 	return list;
 }
 
-struct sta_function_info *
-delete_static_list (struct sta_function_info * list)
-{
-	struct sta_function_info * ptr = list;
-
-	while (ptr != NULL)
-	{
-		list = ptr->next;
-		free (ptr);
-		ptr = list;
-	}
-
-	return ptr;
-}
-
 /******************************************************************************/
 
+/**
+ * List for dynamic pass output elements.
+ */
 struct dyn_function_info * global_dynamic_list = NULL;
 
+/**
+ * List for static pass output elements.
+ */
 struct sta_function_info * global_static_list  = NULL;
 
+/**
+ * Program execution time taken from input file.
+ */
 double program_execution_time = 0.0;
 
 /******************************************************************************/
 
-int yyerror (const char *str)
+/**
+ * Call when an error occurs.
+ * @param str			Error string
+ * @return				Code error
+ */
+int
+yyerror (const char *str)
 {
 	fprintf (stderr, "Ouch an error occurs in the parsing: %s\n", str);
 	exit (0);
 }
 
-int yywrap ()
+/**
+ * End of syntax analysis.
+ * @return				Non-zero if success
+ */
+int
+yywrap ()
 {
 	return 1;
 }
 
 /******************************************************************************/
 
+/**
+ * Print the file first part which indicated for each function some information
+ * about average behaviour of it.
+ * @param output		Log file
+ */
 void
-print_general_part (FILE * tracking_output)
+print_general_part (FILE * output)
 {
 	int 						calls;
 	char 						* name;
@@ -365,13 +353,13 @@ print_general_part (FILE * tracking_output)
 	int							ndet_store;
 	struct dyn_function_info	* det_list = NULL;
 
-	fprintf (tracking_output, 
+	fprintf (output, 
 		"General part: For each function which was instrumented, there is "
 		"number of calls, average exclusive time, total passed time, \n"
 		"percentage of passed time in the function and number of load and "
 		"store. If the program execution time was not computed, the printed \n"
 		"percentage will be \'??\'. A \'+\' sign near the number of memory "
-		"accesses means an non determined loop. If the function was not \n"
+		"accesses means a non determined loop. If the function was not \n"
 		"instrumented by the compiler, the two last values will be \'??\'.\n\n"
 		"+------------------------------------------+----------+--------------"
 		"+-----------------+---------+--------------+--------------+\n"
@@ -380,48 +368,59 @@ print_general_part (FILE * tracking_output)
 		"+------------------------------------------+----------+--------------"
 		"+-----------------+---------+--------------+--------------+\n");
 
+	// While the list is not empty, print the information
 	while (global_dynamic_list != NULL)
 	{
+		// Search dynamic pass output information
 		global_dynamic_list = search_values (&calls, &name, &ex_time,
 			global_dynamic_list, &det_list);
 
+		// Search static pass output information
 		global_static_list = search_static_values (name, &nb_load, &nb_store,
 			&ndet_load, &ndet_store, global_static_list);
 
-		fprintf (tracking_output,
+		fprintf (output,
 				"| %40s | %8d | %12.6f | %15.6f ", name, calls,
 				ex_time / calls, ex_time);
 
+		// If the total execution time was not indicated
 		if (program_execution_time != 0.0)
-			fprintf (tracking_output,
+			fprintf (output,
 				"| %7.4f ",	100 * ex_time / program_execution_time);
 		else
-			fprintf (tracking_output, "|     ?? |");
+			fprintf (output, "|     ?? |");
 
+		// If the function was not analyzed by the static pass
 		if (nb_load == -1)
-			fprintf (tracking_output, "|           ?? |           ?? |\n");
+			fprintf (output, "|           ?? |           ?? |\n");
+		// Else it was, depending now on if it gets determined loops
 		else if (ndet_load == 0 && ndet_store == 0)
-			fprintf (tracking_output, "| %12d | %12d |\n", nb_load, nb_store);
+			fprintf (output, "| %12d | %12d |\n", nb_load, nb_store);
 		else if (ndet_load == 0)
-			fprintf (tracking_output, "| %12d | %12d+|\n", nb_load, nb_store);
+			fprintf (output, "| %12d | %12d+|\n", nb_load, nb_store);
 		else if (ndet_store == 0)
-			fprintf (tracking_output, "| %12d+| %12d |\n", nb_load, nb_store);
+			fprintf (output, "| %12d+| %12d |\n", nb_load, nb_store);
 		else
-			fprintf (tracking_output, "| %12d+| %12d+|\n", nb_load, nb_store);
+			fprintf (output, "| %12d+| %12d+|\n", nb_load, nb_store);
 	}
 
-	fprintf (tracking_output,
+	fprintf (output,
 		"+------------------------------------------+----------+--------------"
 		"+-----------------+---------+--------------+--------------+\n");
 
 	global_dynamic_list = det_list;
 }
 
+/**
+ * Print the file second part which indicate for each function execution
+ * inclusive and exclusive time and percentage of passed time in it.
+ * @param output		Log file
+ */
 void
-print_detailed_part (FILE * tracking_output)
+print_detailed_part (FILE * output)
 {
 	struct dyn_function_info * ptr = global_dynamic_list;
-	fprintf (tracking_output,
+	fprintf (output,
 		"Detailed part: For each function which was instrumented, there is "
 		"call number, inclusive time, exclusive time and percentage of \n"
 		"passed time in the function (for exclusive time). If the program "
@@ -433,18 +432,20 @@ print_detailed_part (FILE * tracking_output)
 		"+--------+------------------------------------------+"
 			"--------------+--------------+---------+\n");
 
+	// Print information for each function in the list
 	while (ptr != NULL)
 	{
+		// If the total execution time was not indicated
 		if (program_execution_time != 0.0)
 		{
-			fprintf (tracking_output,
+			fprintf (output,
 				"| %6d | %40s | %12.6f | %12.6f | %7.4f |\n", ptr->call,
 				ptr->name, ptr->in_time, ptr->ex_time,
 				100 * ptr->ex_time / program_execution_time);
 		}
 		else
 		{
-			fprintf (tracking_output,
+			fprintf (output,
 				"| %6d | %40s | %12.6f | %12.6f |     ?? |\n", ptr->call,
 				ptr->name, ptr->in_time, ptr->ex_time);
 		}
@@ -452,11 +453,14 @@ print_detailed_part (FILE * tracking_output)
 		ptr = ptr->next;
 	}
 
-	fprintf (tracking_output,
+	fprintf (output,
 		"+--------+------------------------------------------+"
 			"--------------+--------------+---------+\n");
 }
 
+/**
+ * Create graph directory, open and close output file and call printers.
+ */
 void
 print_log_file ( )
 {
@@ -465,11 +469,13 @@ print_log_file ( )
 
 	graph_directory = opendir ("./inst_graph");
 
+	// Create the directory if not existed
 	if (graph_directory == NULL)
 		mkdir ("./inst_graph", 0776);
 	else
 		closedir (graph_directory);
 
+	// Open log file
 	tracking_output = fopen ("ftrack.inst", "w");
 
 	if (tracking_output == NULL)
@@ -478,28 +484,33 @@ print_log_file ( )
 		return;
 	}
 
+	// Print the file first part
 	print_general_part (tracking_output);
 
 	fprintf (tracking_output, "\n\n");
 
+	// Print the file second part
 	print_detailed_part (tracking_output);
 
+	// Close log file
 	fclose (tracking_output);
 }
 
 /******************************************************************************/
 
+/**
+ * Main function of the lexer.
+ */
 int
-main (
-	int		argc,
-	char	** argv)
+main ( )
 {
-	struct dyn_function_info* ptr;
-
+	// Parser
 	yyparse ();
 
+	// Print the output file
 	print_log_file ();
 
+	// Delete the global list
 	global_dynamic_list = del_list (global_dynamic_list);
 
 	return 0;

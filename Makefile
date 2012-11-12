@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc-4.6
 
 CCFLAGS=-Wall -Wextra -O2 -I include/
 CCPLUGFLAGS=-O2 -I include/ -I `gcc -print-file-name=plugin`/include -fPIC
@@ -26,7 +26,7 @@ $(EXEC): $(OBJ)
 	$(CC) -shared $^ -o $@
 	yacc -o lexer/y.tab.c -d -v lexer/parser.yy
 	lex -o lexer/lex.yy.c lexer/parser.lex
-	$(CC) lexer/y.tab.c lexer/lex.yy.c -lfl -o instrument
+	$(CC) -I include/ lexer/y.tab.c lexer/lex.yy.c -lfl -o instrument
 
 $(OBJ): $(BUILDDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
@@ -59,7 +59,7 @@ cleantest:
 	rm -f $(TEST)
 
 cleanlib:
-	rm -f (LIB)
+	rm -f $(LIB)
 
 mrproper: clean cleantest cleanlib
 	rm -f $(EXEC)

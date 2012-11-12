@@ -3,15 +3,23 @@
 	#include "y.tab.h"
 %}
 
+/******************************************************************************/
+
+/* Definitions */
 integer		[0-9]+
 time		{integer}"."{integer}
 word		[a-zA-Z]+
 function 	(_|{word}|{integer})+
 
+/******************************************************************************/
+
+/* Rules */
+
 %%
 {time}		{ yylval.dval = atof (yytext); return REALNUMBER; }
 {integer}	{ yylval.ival = atoi (yytext); return INTEGER; }
-"| CALL   | FUNCTION NAME                            | INC TIME (S) | ENTRY CYCLE        | EXIT CYCLE         |"
+"| CALL   | FUNCTION NAME                            |"
+" INC TIME (S) | ENTRY CYCLE        | EXIT CYCLE         |"
 			{}
 "Program total execution time (s):"
 			{}
@@ -24,5 +32,6 @@ function 	(_|{word}|{integer})+
 [ \t\|\-\+]
 %%
 
+/******************************************************************************/
 
-
+/* Functions */
